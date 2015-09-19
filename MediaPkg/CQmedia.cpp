@@ -6,6 +6,7 @@
 CQMedia::CQMedia(int winID, QObject* parent):
     CQGstBasic(winID,(new QWidget())->winId(),parent)
 {
+    silenceState = false;
     this->pipeline=gst_pipeline_new( "pipeline" );
     GstElement *v_src =  gst_element_factory_make("udpsrc","v_src");
     GstElement *videoh264depay  =  gst_element_factory_make("rtph264depay","videoh264depay");
@@ -141,6 +142,7 @@ void CQMedia::setSilence(bool toggle)
         if(vol != NULL)
             g_object_set(vol,"volume",volume/10,NULL);
     }
+    silenceState = toggle;
 }
 
 void CQMedia::_updateDecoder()

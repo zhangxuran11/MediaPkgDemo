@@ -14,15 +14,17 @@ public:
     void setVolume(double volume);
     double getVolume();
     bool loadURL(const QString& url);
+    void setSilence(bool toggle);
+    bool isSilence()const{return silenceState;}
 private:
     double volume;
-
+    bool silenceState;
 
 
     void _updateDecoder();
 
 public slots:
-    void setSilence(bool toggle);
+
 
 };
 

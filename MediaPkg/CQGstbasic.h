@@ -49,6 +49,7 @@ public slots:
     bool play();
     bool play(const QString& url);
     bool stop();
+    void emitError(ErrorType type){emit error(type);}
 
 };
 
