@@ -2,9 +2,24 @@
 #include <gst/interfaces/xoverlay.h>
 #include "MediaPkgCommon.h"
 #include<QTimer>
-CQGstBasic::CQGstBasic(int _winID,int _winID_null,QObject* parent):
-    QObject(parent),winID(_winID),winID_null(_winID_null)
+#include<QWidget>
+#include<QPoint>
+CQGstBasic::CQGstBasic(int _winID,QWidget* win ,QObject* parent):
+    QObject(parent),winID(_winID)
 {
+    barrier = NULL;
+    if(win != 0 )
+    {
+        QRect rect = win->geometry();
+        QPoint point = win->mapToGlobal(QPoint(0,0));
+        barrier = new QWidget;
+        Qt::WindowFlags flags = barrier->windowFlags()|Qt::FramelessWindowHint|Qt::WindowStaysOnTopHint;
+        flags &= (~Qt::WindowCloseButtonHint);
+        barrier->setWindowFlags(flags);
+
+        barrier->setGeometry(point.x(),point.y(),rect.width(),rect.height());
+        //barrier->show();
+    }
     //初始化CQMedia各个变量
 //    this->winID=winID;
 //    this->winID_null = winID_null;
@@ -52,6 +67,36 @@ bool CQGstBasic::paused()
 void CQGstBasic::_onOverlay()
 {
     //判断是否有窗口用以播放
+//    if(this->winID<=0)
+//    {
+//        return ;
+//    }
+//    GstElement *videosink = gst_bin_get_by_name((GstBin*)pipeline,"videosink");
+//    GstStateChangeReturn ret=gst_element_set_state(videosink,GST_STATE_READY);
+//    if(ret == GST_STATE_CHANGE_SUCCESS)
+//    {
+//        qDebug("gst_element_set_state(videosink,GST_STATE_PAUSED )successed");
+//    }
+//    else
+//    {
+//        qDebug("gst_element_set_state(videosink,GST_STATE_PAUSED )failed");
+
+
+//    }
+//    gst_x_overlay_expose(GST_X_OVERLAY(videosink));
+//    if(GST_IS_X_OVERLAY(videosink))
+//    {
+//        gst_x_overlay_set_xwindow_id(GST_X_OVERLAY(videosink),this->winID);
+        //gst_x_overlay_set_render_rectangle(GST_X_OVERLAY(videosink),500,500,500,500);
+
+//    }
+    if(barrier!=NULL)
+        barrier->hide();
+
+}
+void CQGstBasic::_offOverlay()
+{
+    //判断是否有窗口用以播放
     if(this->winID<=0)
     {
         return ;
@@ -62,20 +107,8 @@ void CQGstBasic::_onOverlay()
         gst_x_overlay_set_xwindow_id(GST_X_OVERLAY(videosink),this->winID);
 
     }
-}
-void CQGstBasic::_offOverlay()
-{
-    //判断是否有窗口用以播放
-    if(this->winID_null<=0)
-    {
-        return ;
-    }
-    GstElement *videosink = gst_bin_get_by_name((GstBin*)pipeline,"videosink");
-    if(GST_IS_X_OVERLAY(videosink))
-    {
-        gst_x_overlay_set_xwindow_id(GST_X_OVERLAY(videosink),this->winID_null);
-
-    }
+    if(barrier!=NULL)
+        barrier->show();
 }
 bool CQGstBasic::play()
 {
@@ -88,14 +121,15 @@ bool CQGstBasic::play()
         _updateDecoder();
     }
 #endif
-    _offOverlay( );
-    QTimer::singleShot(3000,this,SLOT(_onOverlay()));
+
     GstStateChangeReturn ret=gst_element_set_state(this->pipeline,GST_STATE_PLAYING);
 
     if(GST_STATE_CHANGE_FAILURE!=ret)
     {
         this->state=PLAYING;
         qDebug("Playing");
+        _offOverlay( );
+        QTimer::singleShot(3000,this,SLOT(_onOverlay()));
         return true;
     }
     return false;

@@ -3,8 +3,8 @@
 #include"MediaPkgCommon.h"
 #include<QDebug>
 #include<QWidget>
-CQMedia::CQMedia(int winID, QObject* parent):
-    CQGstBasic(winID,(new QWidget())->winId(),parent)
+CQMedia::CQMedia(int winID,QWidget* win, QObject* parent):
+    CQGstBasic(winID,win,parent)
 {
     silenceState = false;
     this->pipeline=gst_pipeline_new( "pipeline" );

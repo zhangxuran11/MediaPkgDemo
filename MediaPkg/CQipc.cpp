@@ -10,7 +10,7 @@ bool CQipc::loadURL(const QString& url)
 }
 
 CQipc::CQipc(int winID,QObject* parent):
-    CQGstBasic(winID,winID,parent)
+    CQGstBasic(winID,0,parent)
 {
     this->pipeline=gst_pipeline_new( "pipeline" );
     GstElement *v_src =  gst_element_factory_make("rtspsrc","v_src");

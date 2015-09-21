@@ -18,7 +18,7 @@ public:
         PAUSED,
         STOPPED
     };
-    CQGstBasic(int windowID,int windowID_null,QObject *parent = NULL);
+    CQGstBasic(int windowID,QWidget* win = 0 ,QObject *parent = NULL);
     ~CQGstBasic();
 
 
@@ -38,7 +38,8 @@ private:
 
     virtual void _updateDecoder() = 0;
     const int winID;
-    const int winID_null;
+    QWidget* barrier;
+
 private slots:
 
     void _onOverlay();

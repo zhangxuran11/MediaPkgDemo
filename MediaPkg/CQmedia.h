@@ -4,12 +4,11 @@
 #include <gstreamer-0.10/gst/gst.h>
 #include "CQGstbasic.h"
 
-
 class CQMedia :public CQGstBasic
 {
     Q_OBJECT
 public:
-    CQMedia(int windowID,QObject *parent = NULL);
+    CQMedia(int windowID,QWidget *win,QObject *parent = NULL);
 
     void setVolume(double volume);
     double getVolume();

@@ -8,8 +8,7 @@ CQplayerGUI::CQplayerGUI(QWidget *parent) :
 {
     ui->setupUi(this);
     setWindowFlags(Qt::FramelessWindowHint|(windowFlags() & (~Qt::WindowCloseButtonHint)));
-    ui->frameMovie_2->hide();
-    cqm = new CQMedia(ui->frameMovie->winId());
+    cqm = new CQMedia(ui->frameMovie->winId(),ui->frameMovie);
     cqi = new CQipc(ui->frameMovie->winId());
 }
 

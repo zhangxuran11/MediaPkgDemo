@@ -32,7 +32,7 @@ contains( DEFINES, ARM ) {
                 /opt/poky/1.5.1/sysroots/armv7a-vfp-neon-poky-linux-gnueabi/usr/lib/i386-linux-gnu/glib-2.0/include/ \
                 /usr/include/qt4/
 
-    mytarget.commands = scp ./${TARGET} root@192.168.1.40:/
+    mytarget.commands = scp ./${TARGET} root@192.168.1.30:/
 }
 contains( DEFINES, X86 ) {
 
