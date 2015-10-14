@@ -13,7 +13,7 @@ CQMedia::CQMedia(int winID,QWidget* win, QObject* parent):
     GstElement *videoque0 = gst_element_factory_make("queue","videoque0");
     //GstElement *videoque1 = gst_element_factory_make("queue","videoque1");
     g_object_set(G_OBJECT(v_src),"timeout",guint64(1000000),NULL);
-    g_object_set(G_OBJECT(videoque0),"max-size-time",(guint64)0,"max-size-buffers",(guint64)0,NULL);
+    g_object_set(G_OBJECT(videoque0),"max-size-time",(guint64)0,NULL);
     //g_object_set(G_OBJECT(videoque1),"max-size-time",(guint64)100000,"max-size-buffers",(guint64)100000,NULL);
 
 
@@ -23,6 +23,8 @@ CQMedia::CQMedia(int winID,QWidget* win, QObject* parent):
     GstElement *audiodepay  =  gst_element_factory_make("rtpmp4gdepay","audiodepay");
     GstElement *audiovol = gst_element_factory_make("volume","audiovol");
     GstElement *audiosink =  gst_element_factory_make("alsasink","audiosink");
+    GstElement *audioque1 = gst_element_factory_make("queue","audioque1");
+    g_object_set(G_OBJECT(audioque1),"max-size-time",(guint64)0,"max-size-buffers",(guint64)0,NULL);
     g_object_set(G_OBJECT(audiosink),"sync",false,NULL);
 #ifdef ARM
     ///////////////////////////////////////////视频通道////////////////////////////////
@@ -30,19 +32,19 @@ CQMedia::CQMedia(int winID,QWidget* win, QObject* parent):
 
     GstElement *videodecoder =  gst_element_factory_make("mfw_vpudecoder","videodecoder");
     GstElement *videosink =  gst_element_factory_make("imxv4l2sink","videosink");
-    g_object_set(G_OBJECT(videodecoder),"parser",true,"dbkenable",false,"profiling",true,
-                 "framedrop",false,"min-latency",true,"loopback",true,"fmt",(guint64)1,NULL);
+    g_object_set(G_OBJECT(videodecoder),"parser",false,"dbkenable",true,"profiling",true,
+                 "framedrop",true,"min-latency",true,"fmt",(guint64)1,NULL);
     if(pipeline==NULL||v_src==NULL||videoh264depay==NULL
             ||videoque0==NULL||videodecoder==NULL||videosink==NULL)
     {
         qDebug("video create failed\n");
     }
 
-    gst_bin_add_many (GST_BIN (pipeline), v_src,videoque0,videoh264depay,videodecoder,videosink,NULL);
-    gst_element_link_many ( v_src,videoh264depay,videoque0,videodecoder,videosink,NULL);
+    gst_bin_add_many (GST_BIN (pipeline), v_src,videoh264depay,videodecoder,videoque0,videosink,NULL);
+    gst_element_link_many ( v_src,videoh264depay,videodecoder,videoque0,videosink,NULL);
     ///////////////////////////////////////////音频通道////////////////////////////////
     GstElement *audiodecoder  =  gst_element_factory_make("beepdec","audiodecoder");
-    g_object_set(G_OBJECT(videosink),"sync",false,"x11enable",true,NULL);
+    g_object_set(G_OBJECT(videosink),"sync",false,NULL);
 #endif
 
 #ifdef  X86
@@ -71,8 +73,8 @@ CQMedia::CQMedia(int winID,QWidget* win, QObject* parent):
         qDebug("audio create failed\n");
     }
 
-    gst_bin_add_many (GST_BIN (pipeline), a_src,audiodepay,audiodecoder,audiocnv,audiovol,audiosink,NULL);
-    gst_element_link_many ( a_src,audiodepay,audiodecoder,audiocnv,audiovol,audiosink,NULL);
+    gst_bin_add_many (GST_BIN (pipeline), a_src,audiodepay,audioque1,audiodecoder,audiocnv,audiovol,audiosink,NULL);
+    gst_element_link_many ( a_src,audiodepay,audiodecoder,audioque1,audiocnv,audiovol,audiosink,NULL);
 
     ///////////////////////////////////////////属性设置////////////////////////////////
 
@@ -116,12 +118,21 @@ bool CQMedia::loadURL(const QString& url)
     return true;
 
 }
+static double lineFun(int x)
+{
+    double y;
+    if(x <= 90)
+        y = x/90.0;
+    else
+        y = 9 * x/ 10.0 - 80;
+    return y;
+}
 void CQMedia::setVolume(double _volume)
 {
     volume=_volume;
     GstElement *vol = gst_bin_get_by_name((GstBin *)pipeline,"audiovol");
     if(vol != NULL)
-        g_object_set(vol,"volume",volume/10,NULL);
+        g_object_set(vol,"volume",lineFun(volume),NULL);
 }
 double CQMedia::getVolume()
 {
@@ -158,13 +169,16 @@ void CQMedia::_updateDecoder()
             gst_object_unref(videodecoder);
 
             videodecoder =  gst_element_factory_make("mfw_vpudecoder","videodecoder");
-            g_object_set(G_OBJECT(videodecoder),"parser",true,"dbkenable",false,"profiling",true,
-                         "framedrop",false,"min-latency",true,"loopback",true,"fmt",(guint64)1,NULL);
-
+//            g_object_set(G_OBJECT(videodecoder),"parser",true,"dbkenable",false,"profiling",true,
+//                         "framedrop",false,"min-latency",true,"loopback",true,"fmt",(guint64)1,NULL);
+//            g_object_set(G_OBJECT(videodecoder),"parser",false,"dbkenable",true,"profiling",true,
+//                         "framedrop",true,"min-latency",true,"fmt",(guint64)1,NULL);
+            g_object_set(G_OBJECT(videodecoder),"parser",false,"dbkenable",false,"profiling",true,
+                         "framedrop",false,"min-latency",false,"loopback",false,"fmt",(guint64)1,NULL);
             GstElement *videoque0 = gst_bin_get_by_name((GstBin*)pipeline,"videoque0");
-            GstElement *videosink = gst_bin_get_by_name((GstBin*)pipeline,"videosink");
+            GstElement *videoh264depay = gst_bin_get_by_name((GstBin*)pipeline,"videoh264depay");
             gst_bin_add_many (GST_BIN (pipeline),videodecoder,NULL);
-            if(gst_element_link_many ( videoque0,videodecoder,videosink,NULL))
+            if(gst_element_link_many ( videoh264depay,videodecoder,videoque0,NULL))
             {
                 qDebug("link videodecoder  SUCCESS!!");
             }
@@ -174,7 +188,7 @@ void CQMedia::_updateDecoder()
             }
 
             gst_object_unref(videoque0);
-            gst_object_unref(videosink);
+            gst_object_unref(videoh264depay);
 
         }
         else

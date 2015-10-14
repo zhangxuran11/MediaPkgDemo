@@ -1,6 +1,6 @@
 INCLUDEPATH += $$PWD
 DEPENDPATH += $$PWD
-include(ZTools/ZTools.pri)
+
 HEADERS += \
     MediaPkg/sdpsrcparser.h \
     MediaPkg/CQmedia.h \

@@ -6,8 +6,8 @@
    <rect>
     <x>0</x>
     <y>0</y>
-    <width>800</width>
-    <height>480</height>
+    <width>927</width>
+    <height>656</height>
    </rect>
   </property>
   <property name="sizePolicy">
@@ -26,9 +26,9 @@
    <property name="geometry">
     <rect>
      <x>10</x>
-     <y>0</y>
-     <width>811</width>
-     <height>371</height>
+     <y>20</y>
+     <width>871</width>
+     <height>491</height>
     </rect>
    </property>
    <property name="frameShape">
@@ -41,8 +41,8 @@
   <widget class="QPushButton" name="playMediaButton">
    <property name="geometry">
     <rect>
-     <x>60</x>
-     <y>430</y>
+     <x>100</x>
+     <y>580</y>
      <width>98</width>
      <height>27</height>
     </rect>
@@ -54,8 +54,8 @@
   <widget class="QPushButton" name="stopButton">
    <property name="geometry">
     <rect>
-     <x>660</x>
-     <y>430</y>
+     <x>720</x>
+     <y>580</y>
      <width>98</width>
      <height>27</height>
     </rect>
@@ -67,8 +67,8 @@
   <widget class="QPushButton" name="playIPCButton">
    <property name="geometry">
     <rect>
-     <x>290</x>
-     <y>430</y>
+     <x>280</x>
+     <y>580</y>
      <width>98</width>
      <height>27</height>
     </rect>
@@ -80,8 +80,8 @@
   <widget class="QPushButton" name="setOverButton">
    <property name="geometry">
     <rect>
-     <x>430</x>
-     <y>430</y>
+     <x>590</x>
+     <y>570</y>
      <width>98</width>
      <height>27</height>
     </rect>

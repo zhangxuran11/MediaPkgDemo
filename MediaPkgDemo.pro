@@ -8,6 +8,7 @@ QT       += core gui network
 
 TARGET = MediaPkgDemo
 TEMPLATE = app
+include(ZTools/ZTools.pri)
 include(MediaPkg/MediaPkg.pri)
 DEFINES += $$(ARCH)
 contains( DEFINES, arm ) {

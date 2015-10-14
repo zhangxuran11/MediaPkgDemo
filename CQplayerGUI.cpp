@@ -1,6 +1,6 @@
 #include "CQplayerGUI.h"
 #include "ui_CQplayerGUI.h"
-
+#include<QTimer>
 
 CQplayerGUI::CQplayerGUI(QWidget *parent) :
     QDialog(parent),
@@ -10,6 +10,7 @@ CQplayerGUI::CQplayerGUI(QWidget *parent) :
     setWindowFlags(Qt::FramelessWindowHint|(windowFlags() & (~Qt::WindowCloseButtonHint)));
     cqm = new CQMedia(ui->frameMovie->winId(),ui->frameMovie);
     cqi = new CQipc(ui->frameMovie->winId());
+    QTimer::singleShot(2000,this,SLOT(on_playMediaButton_clicked()));
 }
 
 
