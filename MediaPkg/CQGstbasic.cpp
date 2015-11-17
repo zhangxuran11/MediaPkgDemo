@@ -4,9 +4,12 @@
 #include<QTimer>
 #include<QWidget>
 #include<QPoint>
+#include<QDebug>
 CQGstBasic::CQGstBasic(int _winID,QWidget* win ,QObject* parent):
     QObject(parent),winID(_winID)
 {
+
+    qos_cnt = 0;
     barrier = NULL;
     if(win != 0 )
     {
@@ -101,7 +104,7 @@ void CQGstBasic::_offOverlay()
     {
         return ;
     }
-    GstElement *videosink = gst_bin_get_by_name((GstBin*)pipeline,"videosink");
+    GstElement *videosink = gst_bin_get_by_name((GstBin*)pipeline,"v_sink");
     if(GST_IS_X_OVERLAY(videosink))
     {
         gst_x_overlay_set_xwindow_id(GST_X_OVERLAY(videosink),this->winID);
@@ -114,16 +117,15 @@ bool CQGstBasic::play()
 {
     if(getPlayingState()==PLAYING)
         return true;
-
 #ifdef ARM
     if(getPlayingState()==STOPPED)
     {
         _updateDecoder();
+        _updateDemux();
     }
 #endif
 
     GstStateChangeReturn ret=gst_element_set_state(this->pipeline,GST_STATE_PLAYING);
-
     if(GST_STATE_CHANGE_FAILURE!=ret)
     {
         this->state=PLAYING;
@@ -132,11 +134,13 @@ bool CQGstBasic::play()
         QTimer::singleShot(3000,this,SLOT(_onOverlay()));
         return true;
     }
+    qDebug("Playing error");
     return false;
 }
 
 bool CQGstBasic::play(const QString& _url)
 {
+
     if(getPlayingState()==STOPPED)
     {
         if(!loadURL(_url))
@@ -151,9 +155,9 @@ bool CQGstBasic::stop()
       return false;
     }
     ret = gst_element_set_state(this->pipeline, GST_STATE_NULL);
-
     if (GST_STATE_CHANGE_FAILURE != ret) {
         this->state = STOPPED;
+        emitError(STOP);
         return true;
     }
     else

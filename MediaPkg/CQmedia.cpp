@@ -3,80 +3,89 @@
 #include"MediaPkgCommon.h"
 #include<QDebug>
 #include<QWidget>
+#include"ztpmanager.h"
+#include<unistd.h>
 CQMedia::CQMedia(int winID,QWidget* win, QObject* parent):
     CQGstBasic(winID,win,parent)
 {
     silenceState = false;
     this->pipeline=gst_pipeline_new( "pipeline" );
-    GstElement *v_src =  gst_element_factory_make("udpsrc","v_src");
-    GstElement *videoh264depay  =  gst_element_factory_make("rtph264depay","videoh264depay");
-    GstElement *videoque0 = gst_element_factory_make("queue","videoque0");
-    //GstElement *videoque1 = gst_element_factory_make("queue","videoque1");
-    g_object_set(G_OBJECT(v_src),"timeout",guint64(1000000),NULL);
-    g_object_set(G_OBJECT(videoque0),"max-size-time",(guint64)0,NULL);
-    //g_object_set(G_OBJECT(videoque1),"max-size-time",(guint64)100000,"max-size-buffers",(guint64)100000,NULL);
+    //构造各组件
+    GstElement *udpsrc =  gst_element_factory_make("udpsrc","udpsrc");
+    g_object_set(G_OBJECT(udpsrc),"do-timestamp",false,NULL);
+    g_object_set(G_OBJECT(udpsrc),"timeout",(quint64)2000000,NULL);
+    GstElement *queue0 = gst_element_factory_make("queue","queue0");
+    g_object_set(G_OBJECT(queue0),"max-size-time",(guint64)0,NULL);
+    GstElement *rtpmp2tdepay  =  gst_element_factory_make("rtpmp2tdepay","rtpmp2tdepay");
 
-
-    GstElement *audiocnv  =  gst_element_factory_make("audioconvert","audiocnv");
-    ///////////////////////////////////////////音频通道////////////////////////////////
-    GstElement *a_src =  gst_element_factory_make("udpsrc","a_src");
-    GstElement *audiodepay  =  gst_element_factory_make("rtpmp4gdepay","audiodepay");
-    GstElement *audiovol = gst_element_factory_make("volume","audiovol");
-    GstElement *audiosink =  gst_element_factory_make("alsasink","audiosink");
-    GstElement *audioque1 = gst_element_factory_make("queue","audioque1");
-    g_object_set(G_OBJECT(audioque1),"max-size-time",(guint64)0,"max-size-buffers",(guint64)0,NULL);
-    g_object_set(G_OBJECT(audiosink),"sync",false,NULL);
+    GstElement *queue1 = gst_element_factory_make("queue","queue1");
+    g_object_set(G_OBJECT(queue1),"max-size-time",(guint64)0,NULL);
+    GstElement *aiurdemux = gst_element_factory_make("aiurdemux","aiurdemux");
+    g_object_set(G_OBJECT(aiurdemux),"streaming_latency",(guint64)5000,NULL);
+    GstElement *queue2 = gst_element_factory_make("queue","queue2");
+    g_object_set(G_OBJECT(queue2),"max-size-time",(guint64)0,NULL);
 #ifdef ARM
-    ///////////////////////////////////////////视频通道////////////////////////////////
-
-
-    GstElement *videodecoder =  gst_element_factory_make("mfw_vpudecoder","videodecoder");
-    GstElement *videosink =  gst_element_factory_make("imxv4l2sink","videosink");
-    g_object_set(G_OBJECT(videodecoder),"parser",false,"dbkenable",true,"profiling",true,
-                 "framedrop",true,"min-latency",true,"fmt",(guint64)1,NULL);
-    if(pipeline==NULL||v_src==NULL||videoh264depay==NULL
-            ||videoque0==NULL||videodecoder==NULL||videosink==NULL)
-    {
-        qDebug("video create failed\n");
-    }
-
-    gst_bin_add_many (GST_BIN (pipeline), v_src,videoh264depay,videodecoder,videoque0,videosink,NULL);
-    gst_element_link_many ( v_src,videoh264depay,videodecoder,videoque0,videosink,NULL);
-    ///////////////////////////////////////////音频通道////////////////////////////////
-    GstElement *audiodecoder  =  gst_element_factory_make("beepdec","audiodecoder");
-    g_object_set(G_OBJECT(videosink),"sync",false,NULL);
+    GstElement *v_dec = gst_element_factory_make("mfw_vpudecoder","v_dec");
+    g_object_set(G_OBJECT(v_dec),"parser",false,"dbkenable",false,"profiling",false,
+                 "framedrop",true,"min-latency",true,"fmt",(guint64)0,NULL);
+    GstElement *v_sink  = gst_element_factory_make("imxv4l2sink","v_sink");
 #endif
-
-#ifdef  X86
-    ///////////////////////////////////////////视频通道////////////////////////////////
-    GstElement *videodecoder =  gst_element_factory_make("ffdec_h264","videodecoder");
+#ifdef X86
+    GstElement *v_dec = gst_element_factory_make("ffdec_h264","v_dec");
     GstElement *colorspace =  gst_element_factory_make("ffmpegcolorspace","colorspace");
-    GstElement *videosink =  gst_element_factory_make("ximagesink","videosink");
-    if(pipeline==NULL||v_src==NULL||videoh264depay==NULL
-            ||videoque0==NULL||videodecoder==NULL||colorspace==NULL||videosink==NULL)
+    GstElement *v_sink  = gst_element_factory_make("ximagesink ","v_sink ");
+#endif
+    g_object_set(G_OBJECT(v_sink),"sync",true,NULL);
+    GstElement *queue3 = gst_element_factory_make("queue","queue3");
+    g_object_set(G_OBJECT(queue3),"max-size-time",(guint64)0,NULL);
+
+#ifdef ARM
+    GstElement *a_dec = gst_element_factory_make("beepdec","a_dec");
+#endif
+
+#ifdef X86
+    GstElement *a_dec = gst_element_factory_make("ffdec_aac","a_dec");
+#endif
+
+    GstElement *a_conv = gst_element_factory_make("audioconvert","audioconvert");
+    GstElement *capsfilter = gst_element_factory_make("capsfilter","capsfilter");
+    GstCaps *a_caps = gst_caps_from_string("audio/x-raw-int, channels=2");
+    g_object_set(G_OBJECT(capsfilter),"caps",a_caps,NULL);
+    GstElement *audiovol = gst_element_factory_make("volume","audiovol");
+    GstElement *a_sink = gst_element_factory_make("alsasink","a_sink");
+    g_object_set(G_OBJECT(a_sink),"sync",true,NULL);
+//串连组件
+#ifdef ARM
+    if(pipeline==NULL||udpsrc==NULL||queue0==NULL||rtpmp2tdepay==NULL||queue1==NULL||aiurdemux==NULL||
+            queue2==NULL||v_dec==NULL||v_sink==NULL||queue3==NULL||a_dec==NULL||a_conv==NULL||capsfilter==NULL||audiovol==NULL||a_sink==NULL)
     {
         qDebug("video create failed\n");
     }
-    gst_bin_add_many (GST_BIN (pipeline), v_src, videoh264depay,videoque0,videodecoder,colorspace,videosink,NULL);
-    gst_element_link_many ( v_src, videoh264depay,videoque0,videodecoder,colorspace,videosink,NULL);
+    gst_bin_add_many (GST_BIN (pipeline), udpsrc,queue0,rtpmp2tdepay,queue1,aiurdemux,
+                      queue2,v_dec,queue3,a_dec,a_conv,capsfilter,audiovol,a_sink,v_sink,NULL);
+    gst_element_link_many ( udpsrc,queue0,rtpmp2tdepay,queue1,aiurdemux,NULL);
+    gst_element_link_many ( queue2,v_dec,v_sink,NULL);
+    g_signal_connect (aiurdemux, "pad-added", G_CALLBACK (pad_added_handler),queue2);
+    gst_element_link_many ( queue3,a_dec,a_conv,capsfilter,audiovol,a_sink,NULL);
+    g_signal_connect (aiurdemux, "pad-added", G_CALLBACK (pad_added_handler), queue3);
+#endif
+#ifdef X86
+    if(pipeline==NULL||udpsrc==NULL||queue0==NULL||rtpmp2tdepay==NULL||queue1==NULL||aiurdemux==NULL||
+            queue2==NULL||v_dec==NULL||colorspace==NULL||v_sink==NULL||queue3==NULL||a_dec==NULL||a_conv==NULL||capsfilter==NULL||audiovol==NUL||a_sink==NULL)
+    {
+        qDebug("video create failed\n");
+    }
+    gst_bin_add_many (GST_BIN (pipeline), udpsrc,queue0,rtpmp2tdepay,queue1,aiurdemux,
+                      queue2,v_dec,colorspace,v_sink,queue3,a_dec,a_conv,capsfilter,audiovol,a_sink,NULL);
+    gst_element_link_many ( udpsrc,queue0,rtpmp2tdepay,queue1,aiurdemux,NULL);
 
+    gst_element_link_many ( queue2,v_dec,colorspace,v_sink,NULL);
+    g_signal_connect (aiurdemux, "pad-added", G_CALLBACK (pad_added_handler), queue2);
+    gst_element_link_many ( queue3,a_dec,a_conv,capsfilter,audiovol,a_sink,NULL);
+    g_signal_connect (aiurdemux, "pad-added", G_CALLBACK (pad_added_handler), queue3);
 
-    ///////////////////////////////////////////音频通道////////////////////////////////
-    GstElement *audiodecoder  =  gst_element_factory_make("ffdec_aac","audiodecoder");
-    g_object_set(G_OBJECT(videosink),"sync",false,NULL);
 #endif
 
-    ///////////////////////////////////////////音频通道////////////////////////////////
-    if(a_src==NULL||audiodepay==NULL
-            ||audiodecoder==NULL||audiocnv==NULL||audiovol==NULL||audiosink==NULL)
-    {
-        qDebug("audio create failed\n");
-    }
-
-    gst_bin_add_many (GST_BIN (pipeline), a_src,audiodepay,audioque1,audiodecoder,audiocnv,audiovol,audiosink,NULL);
-    gst_element_link_many ( a_src,audiodepay,audiodecoder,audioque1,audiocnv,audiovol,audiosink,NULL);
-
-    ///////////////////////////////////////////属性设置////////////////////////////////
 
         //添加消息监听函数
     GstBus* bus=gst_pipeline_get_bus(GST_PIPELINE(pipeline));
@@ -84,37 +93,47 @@ CQMedia::CQMedia(int winID,QWidget* win, QObject* parent):
     gst_object_unref(bus);
     gst_element_set_state(pipeline,GST_STATE_NULL);
     this->state=STOPPED;
-
 }
 bool CQMedia::loadURL(const QString& url)
 {
+    QString tmp = url;
+    tmp.remove(0,6);
+    QString ip = tmp.split(QChar(':'))[0];
+    int port = tmp.split(QChar(':'))[1].toInt();
+    QUdpSocket udp;
+    udp.bind(port,QUdpSocket::ShareAddress);
+    udp.joinMulticastGroup(QHostAddress(ip));
+    QEventLoop q;
+    QTimer::singleShot(5000000,&q,SLOT(quit()));
 
-    this->url = url;
-    SdpsrcParser sdpSrc(url);
-    if(!sdpSrc.isValid())
+    connect(&udp,SIGNAL(readyRead()),&q,SLOT(quit()));
+    q.exec();
+    if(udp.pendingDatagramSize() == -1)
     {
-        qDebug()<<"SdpsrcParser invalid!!";
+        qDebug("has no avalid datapkg...");
         return false;
     }
-    sdpSrc.printf();
-    GstElement *v_src =  gst_bin_get_by_name(GST_BIN(pipeline),"v_src");
-    GstCaps *v_caps = gst_caps_new_simple("application/x-rtp","media",G_TYPE_STRING,"video",
-                                          "payload",G_TYPE_INT,sdpSrc.v_payload,
-                                      "clock-rate",G_TYPE_INT,sdpSrc.v_clock_rate,
-                                  "encoding-name",G_TYPE_STRING,sdpSrc.v_coding.toUtf8().data(),
-                                  "packetization-mode",G_TYPE_STRING,sdpSrc.v_packetization_mode.toUtf8().data(),
-                                  "sprop-parameter-sets",G_TYPE_STRING,sdpSrc.v_sprop_parameter_sets.toUtf8().data(),
-                                   "profile-level-id",G_TYPE_STRING,sdpSrc.v_profile_level_id.toUtf8().data(),
-                                  NULL);
-    QString uri = "udp://"+sdpSrc.broadcastIP+":"+QString::number(sdpSrc.v_port);
-    g_object_set(G_OBJECT(v_src),"uri",uri.toUtf8().data(),"caps",v_caps,NULL);
-    gst_object_unref(v_src);
-    GstElement *a_src =  gst_bin_get_by_name(GST_BIN(pipeline),"a_src");
-    uri = "udp://"+sdpSrc.broadcastIP+":"+QString::number(sdpSrc.a_port);
-    GstCaps *a_caps = gst_caps_from_string(sdpSrc.get_a_caps_string());
-    g_object_set(G_OBJECT(a_src),"uri",uri.toUtf8().data(),"caps",a_caps,NULL);
-    gst_object_unref(a_src);
+    qDebug("has avalid datapkg...");
+    udp.leaveMulticastGroup(QHostAddress(ip));
+    udp.close();
 
+    this->url = url;
+//    SdpsrcParser sdpSrc(url);
+//    if(!sdpSrc.isValid())
+//    {
+//        qDebug()<<"SdpsrcParser invalid!!";
+//        return false;
+//    }
+//    sdpSrc.printf();
+    GstElement *udpsrc =  gst_bin_get_by_name(GST_BIN(pipeline),"udpsrc");
+    GstCaps *caps = gst_caps_new_simple("application/x-rtp",NULL);
+    //QString uri = "udp://"+sdpSrc.broadcastIP+":"+QString::number(sdpSrc.v_port);
+//    QString uri = "udp://"+sdpSrc.broadcastIP+":"+QString::number(sdpSrc.v_port);
+   // QString uri = "udp://239.255.42.42:1234";
+    QString uri = url;
+
+    g_object_set(G_OBJECT(udpsrc),"uri",uri.toUtf8().data(),"caps",caps,NULL);
+    gst_object_unref(udpsrc);
     return true;
 
 }
@@ -130,6 +149,8 @@ static double lineFun(int x)
 void CQMedia::setVolume(double _volume)
 {
     volume=_volume;
+    if(silenceState)
+        return;
     GstElement *vol = gst_bin_get_by_name((GstBin *)pipeline,"audiovol");
     if(vol != NULL)
         g_object_set(vol,"volume",lineFun(volume),NULL);
@@ -145,20 +166,20 @@ void CQMedia::setSilence(bool toggle)
     {
         GstElement *vol = gst_bin_get_by_name((GstBin *)pipeline,"audiovol");
         if(vol != NULL)
-            g_object_set(vol,"volume",0,NULL);
+            g_object_set(vol,"volume",0.0,NULL);
     }
     else
     {
         GstElement *vol = gst_bin_get_by_name((GstBin *)pipeline,"audiovol");
         if(vol != NULL)
-            g_object_set(vol,"volume",volume/10,NULL);
+            g_object_set(vol,"volume",lineFun(volume),NULL);
     }
     silenceState = toggle;
 }
 
 void CQMedia::_updateDecoder()
 {
-    GstElement *videodecoder = gst_bin_get_by_name((GstBin*)pipeline,"videodecoder");
+    GstElement *videodecoder = gst_bin_get_by_name((GstBin*)pipeline,"v_dec");
     GstStateChangeReturn ret=gst_element_set_state(videodecoder,GST_STATE_NULL);
     if(GST_STATE_CHANGE_SUCCESS==ret)
     {
@@ -166,19 +187,15 @@ void CQMedia::_updateDecoder()
         if(gst_bin_remove(GST_BIN(pipeline),videodecoder))
         {
             qDebug("remove videodecoder success!!");
+            usleep(10000);
             gst_object_unref(videodecoder);
-
-            videodecoder =  gst_element_factory_make("mfw_vpudecoder","videodecoder");
-//            g_object_set(G_OBJECT(videodecoder),"parser",true,"dbkenable",false,"profiling",true,
-//                         "framedrop",false,"min-latency",true,"loopback",true,"fmt",(guint64)1,NULL);
-//            g_object_set(G_OBJECT(videodecoder),"parser",false,"dbkenable",true,"profiling",true,
-//                         "framedrop",true,"min-latency",true,"fmt",(guint64)1,NULL);
-            g_object_set(G_OBJECT(videodecoder),"parser",false,"dbkenable",false,"profiling",true,
-                         "framedrop",false,"min-latency",false,"loopback",false,"fmt",(guint64)1,NULL);
-            GstElement *videoque0 = gst_bin_get_by_name((GstBin*)pipeline,"videoque0");
-            GstElement *videoh264depay = gst_bin_get_by_name((GstBin*)pipeline,"videoh264depay");
+            videodecoder =  gst_element_factory_make("mfw_vpudecoder","v_dec");
+            g_object_set(G_OBJECT(videodecoder),"parser",false,"dbkenable",false,"profiling",false,
+                         "framedrop",true,"min-latency",true,"fmt",(guint64)0,NULL);
+            GstElement *queue2 = gst_bin_get_by_name((GstBin*)pipeline,"queue2");
+            GstElement *v_sink = gst_bin_get_by_name((GstBin*)pipeline,"v_sink");
             gst_bin_add_many (GST_BIN (pipeline),videodecoder,NULL);
-            if(gst_element_link_many ( videoh264depay,videodecoder,videoque0,NULL))
+            if(gst_element_link_many ( queue2,videodecoder,v_sink,NULL))
             {
                 qDebug("link videodecoder  SUCCESS!!");
             }
@@ -186,10 +203,8 @@ void CQMedia::_updateDecoder()
             {
                 qDebug("link videodecoder  FAILED!!");
             }
-
-            gst_object_unref(videoque0);
-            gst_object_unref(videoh264depay);
-
+            gst_object_unref(queue2);
+            gst_object_unref(v_sink);
         }
         else
         {
@@ -199,5 +214,49 @@ void CQMedia::_updateDecoder()
     else
     {
         qDebug("set videodecoder to null FAILED!!");
+    }
+}
+void CQMedia::_updateDemux()
+{
+    GstElement *aiurdemux = gst_bin_get_by_name((GstBin*)pipeline,"aiurdemux");
+    GstStateChangeReturn ret=gst_element_set_state(aiurdemux,GST_STATE_NULL);
+    if(GST_STATE_CHANGE_SUCCESS==ret)
+    {
+        qDebug("set aiurdemux to null SUCCESS!!");
+        if(gst_bin_remove(GST_BIN(pipeline),aiurdemux))
+        {
+            qDebug("remove aiurdemux success!!");
+            gst_object_unref(aiurdemux);
+            aiurdemux =  gst_element_factory_make("aiurdemux","aiurdemux");
+            g_object_set(G_OBJECT(aiurdemux),"streaming_latency",(guint64)3000,NULL);
+
+            GstElement *queue1 = gst_bin_get_by_name((GstBin*)pipeline,"queue1");
+            GstElement *queue2 = gst_bin_get_by_name((GstBin*)pipeline,"queue2");
+            GstElement *queue3 = gst_bin_get_by_name((GstBin*)pipeline,"queue3");
+            //qDebug("queue3 is %p",queue3);
+            gst_bin_add_many (GST_BIN (pipeline),aiurdemux,NULL);
+            if(gst_element_link ( queue1,aiurdemux))
+            {
+                qDebug("link aiurdemux  SUCCESS!!");
+            }
+            else
+            {
+                qDebug("link aiurdemux  FAILED!!");
+            }
+            g_signal_connect (aiurdemux, "pad-added", G_CALLBACK (pad_added_handler), queue2);
+            g_signal_connect (aiurdemux, "pad-added", G_CALLBACK (pad_added_handler), queue3);
+
+            gst_object_unref(queue1);
+            gst_object_unref(queue2);
+            gst_object_unref(queue3);
+        }
+        else
+        {
+            qDebug("remove aiurdemux failed!!");
+        }
+    }
+    else
+    {
+        qDebug("set aiurdemux to null FAILED!!");
     }
 }

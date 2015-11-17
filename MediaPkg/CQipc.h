@@ -15,7 +15,8 @@ public:
     CQipc(int windowID,QObject *parent = NULL);
     bool loadURL(const QString& url);
 private:
-    virtual void _updateDecoder();
+    void _updateDecoder();
+    void _updateDemux();
 
 };
 

@@ -19,7 +19,7 @@ CQipc::CQipc(int winID,QObject* parent):
     ///////////////////////////////////////////视频通道////////////////////////////////
 
     GstElement *videodecoder =  gst_element_factory_make("mfw_vpudecoder","videodecoder");
-     GstElement *videosink =  gst_element_factory_make("imxv4l2sink","videosink");
+     GstElement *videosink =  gst_element_factory_make("imxv4l2sink","v_sink");
     g_object_set(G_OBJECT(videodecoder),"parser",false,"dbkenable",true,"profiling",true,
                  "framedrop",true,"min-latency",true,"fmt",(guint64)1,"loopback",true,"use-internal-buffer",true,NULL);
     if(pipeline==NULL||v_src==NULL||videoh264depay==NULL
@@ -38,7 +38,7 @@ CQipc::CQipc(int winID,QObject* parent):
     ///////////////////////////////////////////视频通道////////////////////////////////
     GstElement *videodecoder =  gst_element_factory_make("ffdec_h264","videodecoder");
     GstElement *colorspace =  gst_element_factory_make("ffmpegcolorspace","colorspace");
-    GstElement *videosink =  gst_element_factory_make("ximagesink","videosink");
+    GstElement *videosink =  gst_element_factory_make("ximagesink","v_sink");
     if(pipeline==NULL||v_src==NULL||videoh264depay==NULL
             ||videodecoder==NULL||colorspace==NULL||videosink==NULL)
     {
@@ -81,7 +81,7 @@ void CQipc::_updateDecoder()
                          "framedrop",true,"min-latency",true,"fmt",(guint64)1,"loopback",true,"use-internal-buffer",true,NULL);
 
             GstElement *videoh264depay = gst_bin_get_by_name((GstBin*)pipeline,"videoh264depay");
-            GstElement *videosink = gst_bin_get_by_name((GstBin*)pipeline,"videosink");
+            GstElement *videosink = gst_bin_get_by_name((GstBin*)pipeline,"v_sink");
             gst_bin_add_many (GST_BIN (pipeline),videodecoder,NULL);
             if(gst_element_link_many ( videoh264depay,videodecoder,videosink,NULL))
             {
@@ -106,4 +106,6 @@ void CQipc::_updateDecoder()
         qDebug("set videodecoder to null FAILED!!");
     }
 }
-
+void CQipc::_updateDemux()
+{
+}

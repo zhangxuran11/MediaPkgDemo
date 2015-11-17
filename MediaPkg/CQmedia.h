@@ -19,8 +19,9 @@ private:
     double volume;
     bool silenceState;
 
-
+    void _unref(GstElement* elem);
     void _updateDecoder();
+    void _updateDemux();
 
 public slots:
 
